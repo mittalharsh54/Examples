@@ -1,0 +1,11 @@
+@GET("geocode/json?")
+    Call<Add> getAddress(
+            @Query("latlng") String latlng,
+            @Query("key") String key
+
+    );
+    
+    @FormUrlEncoded
+    @POST("place_list_detail.php")
+    Call<CommentCounts> harshSystems(@Field("place_id") String type);
+    
