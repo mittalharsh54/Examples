@@ -1,0 +1,86 @@
+    private void getAdd(final double latitude, final double longitude) {
+
+        AppApi taskService = ServiceGenerator.createService(AppApi.class);
+        Call<Add> call = taskService.getAddress(
+                mLastLocation.getLatitude() + "," + mLastLocation.getLongitude(),
+                getResources().getString(R.string.google_maps_key)
+        );
+        call.enqueue(new Callback<Add>() {
+            public ArrayList<Marker> mMarkers = new ArrayList<Marker>();
+
+            @Override
+            public void onResponse(Call<Add> call, final Response<Add> response) {
+
+                if (response.body().getStatus().equals("OK")) {
+                    for (int i = 0; i < response.body().getResults().get(0).getAddressComponents().size(); i++) {
+
+                        if (response.body().getResults().get(0).getAddressComponents().get(i).getTypes().contains("sublocality")) {
+                            MarkerOptions marker1 = new MarkerOptions().
+                                    position(new LatLng(latitude, longitude)).
+                                    title(response.body().getResults().get(0).getAddressComponents().get(i).getLongName()).
+                                    snippet(response.body().getResults().get(0).getFormattedAddress()).
+                                    icon(icon);
+                            googleMap.addMarker(marker1);
+                            finalAdd = response.body().getResults().get(0).getFormattedAddress();
+                        }
+                    }
+//                    googleMap.addMarker(marker1);
+                    googleMap.setOnInfoWindowClickListener(new GoogleMap.OnInfoWindowClickListener() {
+                        @Override
+                        public void onInfoWindowClick(Marker marker) {
+                        Intent intent = new Intent(getActivity(), PlaceDetailActivity.class);
+                        intent.putExtra(Helper.PLACE_ID, response.body().getResults().get(0).getPlaceId());
+                        intent.putExtra(Helper.PLACE_TYPE, search_edit_text.getText().toString());
+                        startActivity(intent);
+                        }
+                    });
+                    googleMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+                        @Override
+                        public boolean onMarkerClick(final Marker marker) {
+                            Log.e(TAG, "onMarkerClick: " );
+                            final Handler handler = new Handler();
+                            final long start = SystemClock.uptimeMillis();
+                            final long duration = 1500;
+
+                            final Interpolator interpolator = new BounceInterpolator();
+
+                            handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    long elapsed = SystemClock.uptimeMillis() - start;
+                                    float t = Math.max(
+                                            1 - interpolator.getInterpolation((float) elapsed / duration), 0);
+                                    marker.setAnchor(0.5f, 1.0f + 2 * t);
+
+                                    if (t > 0.0) {
+                                        // Post again 16ms later.
+
+                                        handler.postDelayed(this, 16);
+                                    }
+                                }
+                            });
+                            if (marker != null && marker.isInfoWindowShown()) {
+                                marker.showInfoWindow();
+//                                for (int i = 0; i < response.body().getResults().size(); i++) {
+                                    googleMap.setInfoWindowAdapter(new MyInfoWindowAdapter());
+//                                }
+
+                            }
+                            return false;
+                        }
+                    });
+                    CameraPosition cameraPosition = new CameraPosition.Builder().target(new LatLng(mLastLocation.getLatitude(), mLastLocation.getLongitude())).zoom(15).build();
+                    googleMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+
+                } else {
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Add> call, Throwable t) {
+                Log.e(TAG, "onFailure: " + call + " " + t);
+                Helper.dismissProgressDialog();
+            }
+        });
+
+    }
